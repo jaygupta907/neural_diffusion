@@ -76,13 +76,10 @@ def seek_all_images(img, channels = 3):
         i += 1
 
 # tensor of shape (channels, frames, height, width) -> gif
-def video_tensor_to_gif(tensor, path, duration=120, loop=0, optimize=True):
-    images = map(T.ToPILImage(), tensor.unbind(dim=1))
-    images = [plt.cm.seismic(np.array(img.convert("L")) / 255) for img in images]  # Apply colormap
-    images = [(img[..., :3] * 255).astype(np.uint8) for img in images]  # Convert to RGB format
-    images = list(map(Image.fromarray, images))  # Convert to PIL Images
-    
-    images[0].save(path, save_all=True, append_images=images[1:], duration=duration, loop=loop, optimize=optimize)
+def video_tensor_to_gif(tensor, path, duration = 120, loop = 0, optimize = True):
+    images = map(T.ToPILImage(), tensor.unbind(dim = 1))
+    first_img, *rest_imgs = images
+    first_img.save(path, save_all = True, append_images = rest_imgs, duration = duration, loop = loop, optimize = optimize)
     return images
 
 # gif -> (channels, frame, height, width) tensor

@@ -8,8 +8,6 @@ from attention import *
 from einops import rearrange
 from functools import partial
 from text import BERT_MODEL_DIM
-from neuralop.models import FNO3d
-
 
 class EMA():
     def __init__(self, beta):
@@ -68,7 +66,7 @@ class PreNorm(nn.Module):
 class Block(nn.Module):
     def __init__(self, dim, dim_out):
         super().__init__()
-        self.proj = FNO3d(in_channels=dim, out_channels=dim_out, hidden_channels=dim_out, num_layers=2,n_modes_width=4,n_modes_height=4,n_modes_depth=4)
+        self.proj = nn.Conv3d(dim, dim_out, (1, 3, 3), padding = (0, 1, 1))
         self.norm = RMSNorm(dim_out)
         self.act = nn.SiLU()
 

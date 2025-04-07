@@ -16,7 +16,7 @@ class Trainer(object):
         folder,
         *,
         ema_decay = 0.995,
-        num_frames = 8,
+        num_frames = 16,
         train_batch_size = 32,
         train_lr = 1e-4,
         train_num_steps = 100000,
@@ -65,14 +65,14 @@ class Trainer(object):
         self.results_folder = Path(results_folder)
         self.results_folder.mkdir(exist_ok = True, parents = True)
 
-        # self.reset_parameters()
+        self.reset_parameters()
 
     def reset_parameters(self):
         self.ema_model.load_state_dict(self.model.state_dict())
 
     def step_ema(self):
         if self.step < self.step_start_ema:
-            # self.reset_parameters()
+            self.reset_parameters()
             return
         self.ema.update_model_average(self.ema_model, self.model)
 
@@ -110,25 +110,26 @@ class Trainer(object):
             for i in range(self.gradient_accumulate_every):
                 data = next(self.dl).cuda()
 
-                with autocast(enabled=self.amp):
+                with autocast(enabled = self.amp):
                     loss = self.model(
                         data,
-                        prob_focus_present=prob_focus_present,
-                        focus_present_mask=focus_present_mask
+                        prob_focus_present = prob_focus_present,
+                        focus_present_mask = focus_present_mask
                     )
 
-                    (loss / self.gradient_accumulate_every).backward()
+                    self.scaler.scale(loss / self.gradient_accumulate_every).backward()
 
                 print(f'{self.step}: {loss.item()}')
 
             log = {'loss': loss.item()}
 
             if exists(self.max_grad_norm):
+                self.scaler.unscale_(self.opt)
                 nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
 
-            self.opt.step()
+            self.scaler.step(self.opt)
+            self.scaler.update()
             self.opt.zero_grad()
-
 
             if self.step % self.update_ema_every == 0:
                 self.step_ema()
